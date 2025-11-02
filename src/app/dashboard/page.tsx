@@ -43,6 +43,7 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [machinery, setMachinery] = useState<Machinery[]>([])
   const [loading, setLoading] = useState(true)
+  const [updatingBooking, setUpdatingBooking] = useState<string | null>(null)
 
   useEffect(() => {
     if (session) {
@@ -78,6 +79,32 @@ export default function DashboardPage() {
       console.error('Failed to fetch data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleBookingStatus = async (bookingId: string, newStatus: 'CONFIRMED' | 'CANCELLED') => {
+    try {
+      setUpdatingBooking(bookingId)
+      const res = await fetch(`/api/bookings/${bookingId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+
+      if (res.ok) {
+        const updatedBooking = await res.json()
+        // Update the booking in the list
+        setBookings(bookings.map(b => b.id === bookingId ? updatedBooking : b))
+        alert(`Booking ${newStatus === 'CONFIRMED' ? 'accepted' : 'rejected'} successfully!`)
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to update booking status')
+      }
+    } catch (error) {
+      console.error('Failed to update booking status:', error)
+      alert('Failed to update booking status')
+    } finally {
+      setUpdatingBooking(null)
     }
   }
 
@@ -140,7 +167,7 @@ export default function DashboardPage() {
                 </svg>
               </div>
             </div>
-            <p className="text-3xl font-bold text-gray-900">${loading ? '...' : totalSpent.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-gray-900">PKR {loading ? '...' : Number(totalSpent).toLocaleString()}</p>
             <p className="text-sm text-gray-500 mt-1">All time</p>
           </div>
 
@@ -172,6 +199,69 @@ export default function DashboardPage() {
             <p className="text-sm text-gray-500 mt-1">Awaiting action</p>
           </div>
         </div>
+
+        {/* Pending Booking Requests (Owner Only) */}
+        {session.user.role === 'OWNER' && bookings.filter(b => b.status === 'PENDING').length > 0 && (
+          <div className="mb-8">
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">Pending Booking Requests</h2>
+                <p className="text-sm text-gray-600">Review and approve or reject booking requests from renters.</p>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  {bookings
+                    .filter(b => b.status === 'PENDING')
+                    .map((booking) => (
+                      <div
+                        key={booking.id}
+                        className="flex items-center space-x-4 p-4 border-2 border-yellow-200 bg-yellow-50 rounded-lg"
+                      >
+                        <div className="relative w-20 h-20 flex-shrink-0 bg-gray-200 rounded-lg overflow-hidden">
+                          {booking.machinery.photos[0] && (
+                            <Image
+                              src={booking.machinery.photos[0]}
+                              alt={booking.machinery.name}
+                              fill
+                              className="object-cover"
+                            />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-sm font-semibold text-gray-900">{booking.machinery.name}</h3>
+                          <p className="text-sm text-gray-600">
+                            Renter: {booking.users?.name || 'Unknown'}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(booking.start_time).toLocaleDateString()} - {new Date(booking.end_time).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-green-600 mb-3">PKR {booking.total_price.toLocaleString()}</p>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleBookingStatus(booking.id, 'CONFIRMED')}
+                              disabled={updatingBooking === booking.id}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {updatingBooking === booking.id ? 'Processing...' : 'Accept'}
+                            </button>
+                            <button
+                              onClick={() => handleBookingStatus(booking.id, 'CANCELLED')}
+                              disabled={updatingBooking === booking.id}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {updatingBooking === booking.id ? 'Processing...' : 'Reject'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -229,7 +319,7 @@ export default function DashboardPage() {
                             <p className="text-sm text-gray-600">{item.location}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-lg font-bold text-green-600">${item.daily_rate}/day</p>
+                            <p className="text-lg font-bold text-green-600">PKR {Number(item.daily_rate).toLocaleString()}/day</p>
                             <p className={`text-sm ${item.available ? 'text-green-600' : 'text-red-600'}`}>
                               {item.available ? 'Available' : 'Unavailable'}
                             </p>
@@ -282,7 +372,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-lg font-bold text-green-600">${booking.total_price}</p>
+                          <p className="text-lg font-bold text-green-600">PKR {Number(booking.total_price).toLocaleString()}</p>
                           <span
                             className={`inline-block px-2 py-1 text-xs font-medium rounded ${
                               booking.status === 'CONFIRMED'

@@ -14,9 +14,18 @@ interface UserProfile {
   created_at: string
 }
 
+interface UserStats {
+  machineryCount: number
+  bookingsCount: number
+  totalEarnings: number
+  averageRating: number
+  reviewsCount: number
+}
+
 export default function ProfilePage() {
   const { data: session, status, update } = useSession()
   const [user, setUser] = useState<UserProfile | null>(null)
+  const [stats, setStats] = useState<UserStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -36,6 +45,9 @@ export default function ProfilePage() {
 
     if (session?.user?.id) {
       fetchUserProfile()
+      if (session.user.role === 'OWNER') {
+        fetchUserStats()
+      }
     }
   }, [session, status])
 
@@ -66,6 +78,18 @@ export default function ProfilePage() {
     }
   }
 
+  const fetchUserStats = async () => {
+    try {
+      const res = await fetch(`/api/users/${session?.user?.id}/stats`)
+      if (res.ok) {
+        const data = await res.json()
+        setStats(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch user stats:', err)
+    }
+  }
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
@@ -93,15 +117,22 @@ export default function ProfilePage() {
 
       const updatedUser = await res.json()
       setUser(updatedUser)
+      setFormData({
+        name: updatedUser.name || '',
+        phone: updatedUser.phone || '',
+        location: updatedUser.location || '',
+      })
       setIsEditing(false)
       setSuccess('Profile updated successfully!')
 
-      // Update the session with new name
+      // Update the session with new data
       await update({
         ...session,
         user: {
           ...session?.user,
           name: updatedUser.name,
+          phone: updatedUser.phone,
+          location: updatedUser.location,
         },
       })
 
@@ -204,9 +235,6 @@ export default function ProfilePage() {
             <nav className="flex space-x-8 px-6" aria-label="Tabs">
               <button className="border-b-2 border-green-600 py-4 px-1 text-sm font-medium text-green-600">
                 Profile Details
-              </button>
-              <button className="border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
-                My Machinery
               </button>
               <button className="border-b-2 border-transparent py-4 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
                 Ratings & Reviews
@@ -348,20 +376,49 @@ export default function ProfilePage() {
                   {new Date(user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </span>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Total Bookings</span>
-                <span className="font-medium text-gray-900">0</span>
-              </div>
-              {user.role === 'OWNER' && (
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Listed Machinery</span>
-                  <span className="font-medium text-gray-900">0</span>
-                </div>
+              {user.role === 'OWNER' ? (
+                <>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Listed Machinery</span>
+                    <span className="font-medium text-gray-900">{stats?.machineryCount || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Total Bookings</span>
+                    <span className="font-medium text-gray-900">{stats?.bookingsCount || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Total Earnings</span>
+                    <span className="font-semibold text-green-600">
+                      PKR {Number(stats?.totalEarnings || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Average Rating</span>
+                    <span className="font-medium text-gray-900 flex items-center">
+                      {stats?.averageRating ? stats.averageRating.toFixed(1) : 'N/A'}
+                      {stats?.averageRating && (
+                        <svg className="w-4 h-4 ml-1 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      )}
+                      <span className="text-xs text-gray-500 ml-1">
+                        ({stats?.reviewsCount || 0})
+                      </span>
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Total Bookings</span>
+                    <span className="font-medium text-gray-900">0</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Reviews Given</span>
+                    <span className="font-medium text-gray-900">0</span>
+                  </div>
+                </>
               )}
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Reviews Given</span>
-                <span className="font-medium text-gray-900">0</span>
-              </div>
             </div>
           </div>
 
@@ -389,6 +446,7 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   )

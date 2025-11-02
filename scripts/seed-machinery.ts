@@ -10,14 +10,14 @@ async function main() {
   const hashedPassword = await bcrypt.hash('password123', 12)
 
   const owner = await prisma.users.upsert({
-    where: { email: 'owner@agrishare.com' },
+    where: { email: 'owner@agrishare.pk' },
     update: {},
     create: {
-      email: 'owner@agrishare.com',
-      name: 'Farmer Bob',
+      email: 'owner@agrishare.pk',
+      name: 'Ahmed Khan',
       password: hashedPassword,
-      phone: '+1 (555) 123-4567',
-      location: 'Springfield, IL',
+      phone: '+92 300 1234567',
+      location: 'Faisalabad, Punjab',
       role: 'OWNER',
     },
   })

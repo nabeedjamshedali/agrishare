@@ -32,6 +32,8 @@ export default function MachineryDetailPage() {
   const [machinery, setMachinery] = useState<Machinery | null>(null)
   const [loading, setLoading] = useState(true)
   const [showBookingModal, setShowBookingModal] = useState(false)
+  const [initiatingChat, setInitiatingChat] = useState(false)
+  const [showPhoneModal, setShowPhoneModal] = useState(false)
   const [bookingData, setBookingData] = useState({
     startDate: '',
     endDate: '',
@@ -66,6 +68,40 @@ export default function MachineryDetailPage() {
     return days * machinery.daily_rate
   }
 
+  const handleChatWithOwner = async () => {
+    if (!session) {
+      router.push('/auth/signin')
+      return
+    }
+
+    if (!machinery) return
+
+    try {
+      setInitiatingChat(true)
+      const res = await fetch('/api/chat/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receiverId: machinery.users.id,
+          machineryId: machinery.id,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        router.push(`/messages?chat=${data.chatId}`)
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to initiate chat')
+      }
+    } catch (error) {
+      console.error('Failed to initiate chat:', error)
+      alert('Failed to initiate chat')
+    } finally {
+      setInitiatingChat(false)
+    }
+  }
+
   const handleBooking = async () => {
     if (!session) {
       router.push('/auth/signin')
@@ -94,6 +130,7 @@ export default function MachineryDetailPage() {
         alert(data.error || 'Failed to create booking')
       }
     } catch (error) {
+      console.error('Failed to create booking:', error)
       alert('Failed to create booking')
     }
   }
@@ -164,12 +201,12 @@ export default function MachineryDetailPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-3xl font-bold text-green-600">
-                    ${machinery.daily_rate}
+                    PKR {Number(machinery.daily_rate).toLocaleString()}
                     <span className="text-sm text-gray-600 font-normal">/day</span>
                   </div>
                   {machinery.hourly_rate > 0 && (
                     <div className="text-lg text-gray-600">
-                      ${machinery.hourly_rate}/hour
+                      PKR {Number(machinery.hourly_rate).toLocaleString()}/hour
                     </div>
                   )}
                 </div>
@@ -243,17 +280,20 @@ export default function MachineryDetailPage() {
                     <span>Book Now</span>
                   </button>
 
-                  <Link
-                    href={`/messages?user=${machinery.users.id}`}
-                    className="w-full px-4 py-3 border border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center justify-center space-x-2"
+                  <button
+                    onClick={handleChatWithOwner}
+                    disabled={initiatingChat}
+                    className="w-full px-4 py-3 border border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                     </svg>
-                    <span>Chat with Owner</span>
-                  </Link>
+                    <span>{initiatingChat ? 'Starting Chat...' : 'Chat with Owner'}</span>
+                  </button>
 
-                  <button className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2">
+                  <button
+                    onClick={() => setShowPhoneModal(true)}
+                    className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center space-x-2">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
@@ -304,7 +344,7 @@ export default function MachineryDetailPage() {
                   min={new Date().toISOString().split('T')[0]}
                   value={bookingData.startDate}
                   onChange={(e) => setBookingData(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
                 />
               </div>
 
@@ -317,7 +357,7 @@ export default function MachineryDetailPage() {
                   min={bookingData.startDate || new Date().toISOString().split('T')[0]}
                   value={bookingData.endDate}
                   onChange={(e) => setBookingData(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
                 />
               </div>
 
@@ -330,7 +370,7 @@ export default function MachineryDetailPage() {
                   value={bookingData.notes}
                   onChange={(e) => setBookingData(prev => ({ ...prev, notes: e.target.value }))}
                   placeholder="Any special requirements or questions..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 placeholder-gray-400"
                 />
               </div>
 
@@ -338,17 +378,17 @@ export default function MachineryDetailPage() {
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-600">Daily Rate:</span>
-                    <span className="font-medium">${machinery.daily_rate}</span>
+                    <span className="font-medium text-gray-900">PKR {Number(machinery.daily_rate).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-600">Number of Days:</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-gray-900">
                       {Math.ceil((new Date(bookingData.endDate).getTime() - new Date(bookingData.startDate).getTime()) / (1000 * 60 * 60 * 24))}
                     </span>
                   </div>
                   <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between">
                     <span className="font-semibold text-gray-900">Total:</span>
-                    <span className="font-bold text-green-600 text-xl">${calculateTotal()}</span>
+                    <span className="font-bold text-green-600 text-xl">PKR {calculateTotal().toLocaleString()}</span>
                   </div>
                 </div>
               )}
@@ -368,6 +408,59 @@ export default function MachineryDetailPage() {
                   Confirm Booking
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phone Modal */}
+      {showPhoneModal && machinery && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Owner Contact</h2>
+              <button
+                onClick={() => setShowPhoneModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="text-center py-4">
+              <div className="w-20 h-20 bg-green-600 rounded-full flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">
+                {machinery.users.name.charAt(0)}
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{machinery.users.name}</h3>
+              <p className="text-gray-600 mb-6">{machinery.users.location}</p>
+
+              {machinery.users.phone ? (
+                <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 mb-4">
+                  <p className="text-sm text-gray-600 mb-2">Phone Number</p>
+                  <a
+                    href={`tel:${machinery.users.phone}`}
+                    className="text-2xl font-bold text-green-600 hover:text-green-700 flex items-center justify-center space-x-2"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <span>{machinery.users.phone}</span>
+                  </a>
+                </div>
+              ) : (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-4">
+                  <p className="text-gray-600">Phone number not available</p>
+                </div>
+              )}
+
+              <button
+                onClick={() => setShowPhoneModal(false)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

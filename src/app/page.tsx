@@ -1,3 +1,8 @@
+'use client'
+
+import { useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
@@ -6,6 +11,28 @@ import { Button } from '@/components/ui/button'
  * Shows featured machinery and calls to action
  */
 export default function Home() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  // Redirect logged-in users to appropriate page
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      if (session.user.role === 'OWNER') {
+        router.push('/dashboard')
+      } else {
+        router.push('/browse')
+      }
+    }
+  }, [status, session, router])
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import { Logo } from '@/components/layout/logo'
 import { Button } from '@/components/ui/button'
@@ -19,11 +20,19 @@ import { Eye, EyeOff } from 'lucide-react'
  */
 export default function SignUpPage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedRole, setSelectedRole] = useState<UserRole>('RENTER')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === 'authenticated' && session) {
+      router.push('/dashboard')
+    }
+  }, [status, session, router])
 
   const {
     register,

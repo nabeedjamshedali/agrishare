@@ -13,8 +13,8 @@ model users {
   id                           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name                         String
   email                        String      @unique
-  phone                        String
-  location                     String
+  phone                        String?
+  location                     String?
   created_at                   DateTime    @default(now()) @db.Timestamp(6)
   password                     String
   updated_at                   DateTime    @updatedAt @db.Timestamp(6)
@@ -92,16 +92,17 @@ model bookings {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model chat {
-  id                            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  sender_id                     String   @db.Uuid
-  receiver_id                   String   @db.Uuid
+  id                            String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sender_id                     String    @db.Uuid
+  receiver_id                   String    @db.Uuid
   message                       String
-  timestamp                     DateTime @default(now()) @db.Timestamp(6)
-  booking_id                    String   @db.Uuid
-  is_read                       Boolean  @default(false)
-  bookings                      bookings @relation(fields: [booking_id], references: [id], onDelete: Cascade)
-  users_chat_receiver_idTousers users    @relation("chat_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade)
-  users_chat_sender_idTousers   users    @relation("chat_sender_idTousers", fields: [sender_id], references: [id], onDelete: Cascade)
+  timestamp                     DateTime  @default(now()) @db.Timestamp(6)
+  booking_id                    String?   @db.Uuid
+  is_read                       Boolean   @default(false)
+  machinery_id                  String?   @db.Uuid
+  bookings                      bookings? @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  users_chat_receiver_idTousers users     @relation("chat_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade)
+  users_chat_sender_idTousers   users     @relation("chat_sender_idTousers", fields: [sender_id], references: [id], onDelete: Cascade)
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.

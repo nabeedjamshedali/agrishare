@@ -27,6 +27,9 @@ export default function BrowsePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [filterType, setFilterType] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
+  const [locationFilter, setLocationFilter] = useState('')
+  const [priceRange, setPriceRange] = useState(50000)
+  const [sortBy, setSortBy] = useState('newest')
 
   // Redirect owners to dashboard
   useEffect(() => {
@@ -51,6 +54,44 @@ export default function BrowsePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Filter and sort machinery
+  const filteredMachinery = machinery
+    .filter((item) => {
+      // Type filter
+      if (filterType !== 'All' && item.type !== filterType) return false
+
+      // Search filter
+      if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          !item.description.toLowerCase().includes(searchQuery.toLowerCase())) return false
+
+      // Location filter
+      if (locationFilter && !item.location.toLowerCase().includes(locationFilter.toLowerCase())) return false
+
+      // Price filter
+      if (Number(item.daily_rate) > priceRange) return false
+
+      return true
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'price_low':
+          return Number(a.daily_rate) - Number(b.daily_rate)
+        case 'price_high':
+          return Number(b.daily_rate) - Number(a.daily_rate)
+        case 'newest':
+        default:
+          return 0
+      }
+    })
+
+  const handleResetFilters = () => {
+    setFilterType('All')
+    setSearchQuery('')
+    setLocationFilter('')
+    setPriceRange(50000)
+    setSortBy('newest')
   }
 
   const getTypeColor = (type: string) => {
@@ -118,7 +159,7 @@ export default function BrowsePage() {
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
                 >
                   <option value="All">All</option>
                   <option value="TRACTOR">Tractor</option>
@@ -137,21 +178,26 @@ export default function BrowsePage() {
                 <input
                   type="text"
                   placeholder="Enter location"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 placeholder-gray-400"
                 />
               </div>
 
               {/* Price Range */}
               <div className="mb-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Price Range</h3>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Daily Rate (PKR)</h3>
                 <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-                  <span>$0</span>
-                  <span>$500</span>
+                  <span>PKR 0</span>
+                  <span>PKR {priceRange.toLocaleString()}</span>
                 </div>
                 <input
                   type="range"
                   min="0"
-                  max="500"
+                  max="50000"
+                  step="1000"
+                  value={priceRange}
+                  onChange={(e) => setPriceRange(Number(e.target.value))}
                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
                 />
               </div>
@@ -159,15 +205,22 @@ export default function BrowsePage() {
               {/* Sort By */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Sort By</h3>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                  <option>Nearest</option>
-                  <option>Price: Low to High</option>
-                  <option>Price: High to Low</option>
-                  <option>Newest First</option>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                >
+                  <option value="nearest">Nearest</option>
+                  <option value="price_low">Price: Low to High</option>
+                  <option value="price_high">Price: High to Low</option>
+                  <option value="newest">Newest First</option>
                 </select>
               </div>
 
-              <button className="w-full mt-6 px-4 py-2 text-sm text-green-600 hover:text-green-700 font-medium">
+              <button
+                onClick={handleResetFilters}
+                className="w-full mt-6 px-4 py-2 text-sm text-green-600 hover:text-green-700 font-medium"
+              >
                 Reset Filters
               </button>
             </div>
@@ -176,30 +229,20 @@ export default function BrowsePage() {
           {/* Main Content */}
           <div className="flex-1">
             {/* Search Bar */}
-            <div className="mb-6 flex gap-4">
+            <div className="mb-6">
               <input
                 type="text"
                 placeholder="Search machinery..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 placeholder-gray-400"
               />
-              <select className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                <option value="">All Types</option>
-                <option value="TRACTOR">Tractor</option>
-                <option value="HARVESTER">Harvester</option>
-                <option value="PLANTER">Planter</option>
-                <option value="SPRAYER">Sprayer</option>
-                <option value="TILLER">Tiller</option>
-                <option value="IRRIGATION">Irrigation</option>
-                <option value="OTHER">Other</option>
-              </select>
             </div>
 
             {/* Results Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-gray-900">Available Machinery</h2>
-              <p className="text-sm text-gray-600">Showing {machinery.length} results</p>
+              <p className="text-sm text-gray-600">Showing {filteredMachinery.length} results</p>
             </div>
 
             {/* Machinery Grid */}
@@ -207,21 +250,19 @@ export default function BrowsePage() {
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
               </div>
-            ) : machinery.length === 0 ? (
+            ) : filteredMachinery.length === 0 ? (
               <div className="bg-white rounded-lg shadow p-12 text-center">
-                <p className="text-gray-600 text-lg mb-4">No machinery available at the moment.</p>
-                {session?.user?.role === 'OWNER' && (
-                  <Link
-                    href="/machinery/new"
-                    className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    List Your Machinery
-                  </Link>
-                )}
+                <p className="text-gray-600 text-lg mb-4">No machinery found matching your filters.</p>
+                <button
+                  onClick={handleResetFilters}
+                  className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Reset Filters
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {machinery.map((item) => (
+                {filteredMachinery.map((item) => (
                   <Link key={item.id} href={`/machinery/${item.id}`} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden group">
                     <div className="relative h-48 bg-gray-200">
                       {item.photos[0] ? (
@@ -258,12 +299,12 @@ export default function BrowsePage() {
                         {item.location}
                       </p>
                       <div className="flex items-baseline mb-4">
-                        <span className="text-2xl font-bold text-green-600">${item.daily_rate}</span>
+                        <span className="text-2xl font-bold text-green-600">PKR {Number(item.daily_rate).toLocaleString()}</span>
                         <span className="text-sm text-gray-600 ml-1">/daily</span>
                       </div>
                       {item.hourly_rate > 0 && (
                         <p className="text-sm text-gray-600 mb-4">
-                          ${item.hourly_rate}/hourly
+                          PKR {Number(item.hourly_rate).toLocaleString()}/hourly
                         </p>
                       )}
                       <div className="w-full px-4 py-2 bg-green-600 text-white rounded-lg group-hover:bg-green-700 transition-colors font-medium text-center">
@@ -276,7 +317,7 @@ export default function BrowsePage() {
             )}
 
             {/* Pagination */}
-            {machinery.length > 0 && (
+            {filteredMachinery.length > 0 && (
               <div className="mt-8 flex justify-center">
                 <nav className="flex items-center gap-2">
                   <button className="px-3 py-2 rounded-md text-gray-600 hover:bg-gray-100">
