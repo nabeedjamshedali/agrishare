@@ -19,6 +19,8 @@ model users {
   password                     String
   updated_at                   DateTime    @updatedAt @db.Timestamp(6)
   role                         UserRole    @default(RENTER)
+  reset_token                  String?
+  reset_token_expiry           DateTime?   @db.Timestamp(6)
   accounts                     accounts[]
   bookings                     bookings[]
   chat_chat_receiver_idTousers chat[]      @relation("chat_receiver_idTousers")
@@ -26,6 +28,8 @@ model users {
   machinery                    machinery[]
   reviews                      reviews[]
   sessions                     sessions[]
+
+  @@index([reset_token])
 }
 
 model accounts {
