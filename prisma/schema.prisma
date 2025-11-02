@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model users {
+  id                           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                         String
+  email                        String      @unique
+  phone                        String
+  location                     String
+  created_at                   DateTime    @default(now()) @db.Timestamp(6)
+  password                     String
+  updated_at                   DateTime    @updatedAt @db.Timestamp(6)
+  role                         UserRole    @default(RENTER)
+  accounts                     accounts[]
+  bookings                     bookings[]
+  chat_chat_receiver_idTousers chat[]      @relation("chat_receiver_idTousers")
+  chat_chat_sender_idTousers   chat[]      @relation("chat_sender_idTousers")
+  machinery                    machinery[]
+  reviews                      reviews[]
+  sessions                     sessions[]
+}
+
+model accounts {
+  id                  String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id             String  @db.Uuid
+  type                String
+  provider            String
+  provider_account_id String
+  refresh_token       String?
+  access_token        String?
+  expires_at          Int?
+  token_type          String?
+  scope               String?
+  id_token            String?
+  session_state       String?
+  user                users   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+}
+
+model sessions {
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  session_token String   @unique
+  user_id       String   @db.Uuid
+  expires       DateTime @db.Timestamp(6)
+  user          users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model machinery {
+  id          String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  owner_id    String        @db.Uuid
+  name        String
+  description String
+  hourly_rate Decimal       @db.Decimal(10, 2)
+  daily_rate  Decimal       @db.Decimal(10, 2)
+  location    String
+  photos      String[]
+  created_at  DateTime      @default(now()) @db.Timestamp(6)
+  available   Boolean       @default(true)
+  updated_at  DateTime      @updatedAt @db.Timestamp(6)
+  type        MachineryType
+  bookings    bookings[]
+  users       users         @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+  reviews     reviews[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model bookings {
+  id           String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  machinery_id String        @db.Uuid
+  renter_id    String        @db.Uuid
+  start_time   DateTime      @db.Timestamp(6)
+  end_time     DateTime      @db.Timestamp(6)
+  created_at   DateTime      @default(now()) @db.Timestamp(6)
+  total_price  Decimal       @db.Decimal(10, 2)
+  updated_at   DateTime      @updatedAt @db.Timestamp(6)
+  status       BookingStatus @default(PENDING)
+  machinery    machinery     @relation(fields: [machinery_id], references: [id], onDelete: Cascade)
+  users        users         @relation(fields: [renter_id], references: [id], onDelete: Cascade)
+  chat         chat[]
+  reviews      reviews?
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model chat {
+  id                            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  sender_id                     String   @db.Uuid
+  receiver_id                   String   @db.Uuid
+  message                       String
+  timestamp                     DateTime @default(now()) @db.Timestamp(6)
+  booking_id                    String   @db.Uuid
+  is_read                       Boolean  @default(false)
+  bookings                      bookings @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  users_chat_receiver_idTousers users    @relation("chat_receiver_idTousers", fields: [receiver_id], references: [id], onDelete: Cascade)
+  users_chat_sender_idTousers   users    @relation("chat_sender_idTousers", fields: [sender_id], references: [id], onDelete: Cascade)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model reviews {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  booking_id   String    @unique @db.Uuid
+  rating       Int
+  comment      String?
+  created_at   DateTime  @default(now()) @db.Timestamp(6)
+  machinery_id String    @db.Uuid
+  reviewer_id  String    @db.Uuid
+  bookings     bookings  @relation(fields: [booking_id], references: [id], onDelete: Cascade)
+  machinery    machinery @relation(fields: [machinery_id], references: [id], onDelete: Cascade)
+  users        users     @relation(fields: [reviewer_id], references: [id], onDelete: Cascade)
+}
+
+enum UserRole {
+  OWNER
+  RENTER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum MachineryType {
+  TRACTOR
+  HARVESTER
+  PLANTER
+  SPRAYER
+  TILLER
+  IRRIGATION
+  OTHER
+}
